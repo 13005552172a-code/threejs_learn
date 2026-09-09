@@ -18,51 +18,32 @@ document.body.appendChild(renderer.domElement)
 const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
-// // 创建几何体(任意形状的面都是由三角形组成的，所以Three.js中所有的几何体都是由三角形组成的，包括立方体)
-// const geometry = new THREE.BoxGeometry(1, 1, 1)
-// // 创建材质
-// const materialfather = new THREE.MeshBasicMaterial({ color: 0xff0000 })
-// // 创建材质
-// const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-// // 设置线框模式
-// material.wireframe = true
-// // 创建父元素
-// const parentCube = new THREE.Mesh(geometry, materialfather)
-// // 创建子元素
-// const cube = new THREE.Mesh(geometry, material)
-// parentCube.add(cube) // 将子元素添加到父元素中
-// parentCube.position.set(0, 0, 0)
-// // 相当于给父元素的绝对定位，否则就是根据世界坐标来定位
-// cube.position.set(2, 0, 0)
-// // 都是相对于父元素
-// parentCube.scale.set(0.8, 0.8, 0.8) // 缩放父元素
-// cube.scale.set(2, 2, 2) // 缩放子元素
-
-// // 欧拉角旋转
-// // 绕着x旋转
-// cube.rotation.x = 0
-// parentCube.rotation.x = -0
-// // 将网格追加到场景中
-// scene.add(parentCube)
-
 // 创建几何体
-const geometry = new THREE.BoxGeometry()
-// 创建顶点数据
-const viewGeometry = new Float32Array([-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0])
-// 设置顶点属性
-geometry.setAttribute('position', new THREE.BufferAttribute(viewGeometry, 3))
-// 创建索引数据
-const indices = new Uint16Array([0, 1, 2, 2, 3, 1])
-// 设置索引属性
-geometry.setIndex(new THREE.BufferAttribute(indices, 1))
+const geometry = new THREE.BoxGeometry(1, 1, 1)
 // 创建材质
-const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
-// 加载材质
-const plane = new THREE.Mesh(geometry, material)
-// 添加到场景中
-scene.add(plane)
-console.log(plane)
+const materialfather = new THREE.MeshBasicMaterial({ color: 0xff0000 })
+// 创建材质
+const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+// 设置线框模式
+material.wireframe = true
+// 创建父元素
+const parentCube = new THREE.Mesh(geometry, materialfather)
+// 创建子元素
+const cube = new THREE.Mesh(geometry, material)
+parentCube.add(cube) // 将子元素添加到父元素中
+parentCube.position.set(0, 0, 0)
+// 相当于给父元素的绝对定位，否则就是根据世界坐标来定位
+cube.position.set(2, 0, 0)
+// 都是相对于父元素
+parentCube.scale.set(0.8, 0.8, 0.8) // 缩放父元素
+cube.scale.set(2, 2, 2) // 缩放子元素
 
+// 欧拉角旋转
+// 绕着x旋转
+cube.rotation.x = 0
+parentCube.rotation.x = -0
+// 将网格追加到场景中
+scene.add(parentCube)
 // 设置相机位置
 camera.position.x = 2
 camera.position.y = 2
@@ -74,8 +55,8 @@ controls.enableDamping = true // 设置阻尼，让控制器更有真实效果,�
 // 渲染函数，一帧一帧
 function animate() {
     requestAnimationFrame(animate)
-    // plane.rotation.x += 0.05
-    // plane.rotation.y += 0.01
+    // cube.rotation.x += 0.01
+    // cube.rotation.y += 0.01
     controls.update() // 更新旋转
     renderer.render(scene, camera)
 }
