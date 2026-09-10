@@ -19,9 +19,9 @@ const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
 // 设置相机位置
-camera.position.x = 1
-camera.position.y = 1
-camera.position.z = 3
+camera.position.x = 2
+camera.position.y = 2
+camera.position.z = 5
 
 // 设置轨道控制器(鼠标可以拖动)
 const controls = new OrbitControls(camera, renderer.domElement)
@@ -64,28 +64,6 @@ const textureLoader = new THREE.TextureLoader()
 const texture = textureLoader.load('/img/1_-removebg-preview.png')
 // 加载ao贴图
 const aoTexture = textureLoader.load('/img/2_-removebg-preview.png')
-//透明度贴图
-const alphaMap = textureLoader.load('/img/3-removebg-preview.png')
-// 光照贴图
-const lightMap = textureLoader.load('/img/color.png')
-// 高光贴图
-const specMap = textureLoader.load('/img/4_-removebg-preview.png')
-
-//环境贴图贴图(hdr格式)
-// const rgbeLoader = new THREE.RGBELoader()
-// rgbeLoader.load('/img/Environment.png', texture => {
-//     // 设置环境贴图
-//     scene.background = texture
-// })
-
-// 环境贴图贴图(png格式)
-const rgbeLoader = new THREE.TextureLoader()
-rgbeLoader.load('/img/Environment.png', texture => {
-    // 设置球形映射
-    texture.mapping = THREE.EquirectangularReflectionMapping
-    // 设置环境贴图
-    scene.background = texture
-})
 
 // 创建平面
 let plane = new THREE.PlaneGeometry(1, 1)
@@ -93,12 +71,8 @@ let planeMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     map: texture,
     transparent: true, //允许透明度
-    opacity: 0.8, // 透明度
-    aoMap: aoTexture, // ao贴图
-    // alphaMap: alphaMap, // 透明度贴图
-    // lightMap: lightMap, // 光照贴图
-    specularMap: specMap, // 高光贴图
-    reflectivity: 1 // 反射强度
+    // opacity: 0.8 // 透明度
+    aoMap: aoTexture // ao贴图
 })
 let planeMesh = new THREE.Mesh(plane, planeMaterial)
 gui.add(planeMaterial, 'opacity').min(0).max(1).step(0.1).name('ao贴图强度')

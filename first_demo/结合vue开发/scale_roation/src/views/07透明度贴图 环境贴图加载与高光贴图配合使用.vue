@@ -95,7 +95,7 @@ let planeMaterial = new THREE.MeshBasicMaterial({
     transparent: true, //允许透明度
     opacity: 0.8, // 透明度
     aoMap: aoTexture, // ao贴图
-    // alphaMap: alphaMap, // 透明度贴图
+    alphaMap: alphaMap, // 透明度贴图
     // lightMap: lightMap, // 光照贴图
     specularMap: specMap, // 高光贴图
     reflectivity: 1 // 反射强度
