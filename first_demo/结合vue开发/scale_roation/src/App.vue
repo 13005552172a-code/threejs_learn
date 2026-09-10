@@ -18,32 +18,6 @@ document.body.appendChild(renderer.domElement)
 const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
-// 创建几何体
-const geometry = new THREE.BoxGeometry(1, 1, 1)
-// 创建材质
-const materialfather = new THREE.MeshBasicMaterial({ color: 0xff0000 })
-// 创建材质
-const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-// 设置线框模式
-material.wireframe = true
-// 创建父元素
-const parentCube = new THREE.Mesh(geometry, materialfather)
-// 创建子元素
-const cube = new THREE.Mesh(geometry, material)
-parentCube.add(cube) // 将子元素添加到父元素中
-parentCube.position.set(0, 0, 0)
-// 相当于给父元素的绝对定位，否则就是根据世界坐标来定位
-cube.position.set(2, 0, 0)
-// 都是相对于父元素
-parentCube.scale.set(0.8, 0.8, 0.8) // 缩放父元素
-cube.scale.set(2, 2, 2) // 缩放子元素
-
-// 欧拉角旋转
-// 绕着x旋转
-cube.rotation.x = 0
-parentCube.rotation.x = -0
-// 将网格追加到场景中
-scene.add(parentCube)
 // 设置相机位置
 camera.position.x = 2
 camera.position.y = 2
@@ -61,7 +35,6 @@ function animate() {
     renderer.render(scene, camera)
 }
 animate()
-// renderer.render(scene, camera)
 
 // 监听窗口的变化
 window.addEventListener('resize', () => {
@@ -83,57 +56,19 @@ let eventObj = {
         console.log('退出全屏窗口')
     }
 }
-// 创建gui实例
+const params = {}
 const gui = new GUI()
-// 添加按钮和命名
-gui.add(eventObj, 'Fullscreen').name('全屏窗口')
-gui.add(eventObj, 'ExitFullscreen').name('退出全屏窗口')
-//控制立方体的位置(输入)
-// gui.add(cube.position, 'x').name('x轴位置')
-// gui.add(cube.position, 'y').name('y轴位置')
-// gui.add(cube.position, 'z').name('z轴位置')
-//控制立方体的位置(滑动条)
-let folder1 = gui.addFolder('字级立方体位置') //文件夹
-folder1
-    .add(cube.position, 'x')
-    .min(-5)
-    .max(5)
-    .step(0.1)
-    .name('x轴位置')
-    .onFinishChange(() => {
-        console.log(cube.position.x)
-    }) //onFinishChange 当滑动条值改变时触发，用于更新模型的位置
-folder1
-    .add(cube.position, 'y')
-    .min(-5)
-    .max(5)
-    .step(0.1)
-    .name('y轴位置')
-    .onFinishChange(() => {
-        console.log(cube.position.y)
-    })
-folder1
-    .add(cube.position, 'z')
-    .min(-5)
-    .max(5)
-    .step(0.1)
-    .name('z轴位置')
-    .onFinishChange(() => {
-        console.log(cube.position.z)
-    })
-let folder2 = gui.addFolder('父级立方体旋转') //文件夹
-folder2.add(parentCube.rotation, 'x').min(-5).max(5).step(0.1).name('x轴旋转')
-folder2.add(parentCube.rotation, 'y').min(-5).max(5).step(0.1).name('y轴旋转')
-folder2.add(parentCube.rotation, 'z').min(-5).max(5).step(0.1).name('z轴旋转')
-// gui勾选线框模式
-gui.add(material, 'wireframe').name('线框模式')
-// gui勾选颜色
-let colorParmas = {
-    cubeColor: '#00ff00'
-}
-gui.addColor(colorParmas, 'cubeColor')
-    .name('立方体颜色')
-    .onFinishChange(value => {
-        material.color.set(value)
-    })
+// 创建加载器
+const textureLoader = new THREE.TextureLoader()
+// 加载纹理
+const texture = textureLoader.load('/img/1_-removebg-preview.png')
+
+// 创建平面
+let plane = new THREE.PlaneGeometry(1, 1)
+let planeMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    map: texture
+})
+let planeMesh = new THREE.Mesh(plane, planeMaterial)
+scene.add(planeMesh)
 </script>
