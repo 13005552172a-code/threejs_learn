@@ -8,9 +8,6 @@ import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js'
 import { GLTFLoader, RGBELoader } from 'three/examples/jsm/Addons.js'
 // 导入gltf加载器
 import { DRACOLoader } from 'three/examples/jsm/Addons.js'
-// 导入tween（three 0.185 内置的是 tween.js v21，只有命名导出，没有 TWEEN 这个导出）
-import * as TWEEN from 'three/examples/jsm/libs/tween.module.js'
-const { Tween } = TWEEN
 // 创建场景
 const scene = new THREE.Scene()
 // 创建相机
@@ -25,13 +22,22 @@ const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
 // 设置相机位置
-camera.position.x = 7
-camera.position.y = 5
-camera.position.z = 10
-camera.lookAt(0, 0, 0)
+camera.position.x = 1
+camera.position.y = 1
+camera.position.z = 3
+
 // 设置轨道控制器(鼠标可以拖动)
 const controls = new OrbitControls(camera, renderer.domElement)
 controls.enableDamping = true // 设置阻尼，让控制器更有真实效果,必须在动画循环里调用.update()
+// 渲染函数，一帧一帧
+function animate() {
+    requestAnimationFrame(animate)
+    // cube.rotation.x += 0.01
+    // cube.rotation.y += 0.01
+    controls.update() // 更新旋转
+    renderer.render(scene, camera)
+}
+animate()
 
 // 监听窗口的变化
 window.addEventListener('resize', () => {
@@ -55,27 +61,31 @@ let eventObj = {
 }
 let params = {}
 const gui = new GUI()
+// 创建场景（线性的）
+// scene.fog = new THREE.Fog(0x999999, 0.1, 50)
+// 创建场景指数fog(第一个值：颜色，第二个值：密度)
+scene.fog = new THREE.FogExp2(0x999999, 0.1)
+scene.background = new THREE.Color(0x999999)
+// 实例化加载器
+const gltfloader = new GLTFLoader()
+// 加载完成回调
+gltfloader.load('/bighouse.glb', gltf => {
+    console.log(gltf)
+    scene.add(gltf.scene)
+})
 
-const shapebox1 = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 16, 16),
-    new THREE.MeshBasicMaterial({
-        color: 0xff00ff
-    })
-)
-scene.add(shapebox1)
-const tween = new Tween(shapebox1.position)
-tween.to({ x: 4 }, 1000).repeat(3)
-// 移动补间动画
-tween.start()
+// 实例化加载器draco
+const draceoLoader = new DRACOLoader()
+// 设置draco路径
+draceoLoader.setDecoderPath('/draco/')
+//设置gltf加载器draco解码器
+gltfloader.setDRACOLoader(draceoLoader)
 
-// 渲染函数，一帧一帧
-function animate() {
-    requestAnimationFrame(animate)
-    // cube.rotation.x += 0.01
-    // cube.rotation.y += 0.01
-    controls.update() // 更新旋转
-    renderer.render(scene, camera)
-    tween.update()
-}
-animate()
+const rgbeLoader = new THREE.TextureLoader()
+rgbeLoader.load('/img/Environment.png', texture => {
+    // 设置球形映射
+    texture.mapping = THREE.EquirectangularReflectionMapping
+    // 设置环境贴图
+    scene.background = texture
+})
 </script>

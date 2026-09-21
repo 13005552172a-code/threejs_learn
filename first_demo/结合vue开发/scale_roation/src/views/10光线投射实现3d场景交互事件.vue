@@ -8,9 +8,6 @@ import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js'
 import { GLTFLoader, RGBELoader } from 'three/examples/jsm/Addons.js'
 // 导入gltf加载器
 import { DRACOLoader } from 'three/examples/jsm/Addons.js'
-// 导入tween（three 0.185 内置的是 tween.js v21，只有命名导出，没有 TWEEN 这个导出）
-import * as TWEEN from 'three/examples/jsm/libs/tween.module.js'
-const { Tween } = TWEEN
 // 创建场景
 const scene = new THREE.Scene()
 // 创建相机
@@ -32,6 +29,15 @@ camera.lookAt(0, 0, 0)
 // 设置轨道控制器(鼠标可以拖动)
 const controls = new OrbitControls(camera, renderer.domElement)
 controls.enableDamping = true // 设置阻尼，让控制器更有真实效果,必须在动画循环里调用.update()
+// 渲染函数，一帧一帧
+function animate() {
+    requestAnimationFrame(animate)
+    // cube.rotation.x += 0.01
+    // cube.rotation.y += 0.01
+    controls.update() // 更新旋转
+    renderer.render(scene, camera)
+}
+animate()
 
 // 监听窗口的变化
 window.addEventListener('resize', () => {
@@ -63,19 +69,45 @@ const shapebox1 = new THREE.Mesh(
     })
 )
 scene.add(shapebox1)
-const tween = new Tween(shapebox1.position)
-tween.to({ x: 4 }, 1000).repeat(3)
-// 移动补间动画
-tween.start()
+shapebox1.position.x = -2
+const shapebox2 = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 16, 16),
+    new THREE.MeshBasicMaterial({
+        color: 0x0000ff
+    })
+)
+scene.add(shapebox2)
+const shapebox3 = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 16, 16),
+    new THREE.MeshBasicMaterial({
+        color: 0xff0000
+    })
+)
+scene.add(shapebox3)
+shapebox3.position.x = 2
+// 创建射线
+const raycaster = new THREE.Raycaster()
+// 创建鼠标向量
+const mouse = new THREE.Vector2()
+// 三个球放进数组，方便挨个做射线检测
+const shapes = [shapebox1, shapebox2, shapebox3]
+// 点击事件
+window.addEventListener('click', e => {
+    // 设置鼠标向量的x,y值
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1
+    // 通过摄像机和鼠标位置更新射线
+    raycaster.setFromCamera(mouse, camera)
 
-// 渲染函数，一帧一帧
-function animate() {
-    requestAnimationFrame(animate)
-    // cube.rotation.x += 0.01
-    // cube.rotation.y += 0.01
-    controls.update() // 更新旋转
-    renderer.render(scene, camera)
-    tween.update()
-}
-animate()
+    // 挨个检测，射线碰到了哪个球，哪个球就是目标(没碰到的返回空数组)
+    const hitShape = shapes.find(shape => raycaster.intersectObject(shape).length > 0)
+    if (!hitShape) return
+
+    // 第一次被点中时，把原始颜色记在 userData 上(getHex 拿到的是 0xff00ff 这样的数字)
+    hitShape.userData.originHex ??= hitShape.material.color.getHex()
+    // 取反选中状态
+    hitShape.userData.isSelect = !hitShape.userData.isSelect
+    // 选中 → 青蓝色高亮；取消选中 → 用记下来的原始色恢复
+    hitShape.material.color.set(hitShape.userData.isSelect ? 0x00fff0 : hitShape.userData.originHex)
+})
 </script>
