@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // 导入lil.gui(Three.js 生态最常用的**轻量可视化控制面板库**)
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js'
 // 导入hdr加载器
-import { GLTFLoader, RGBELoader } from 'three/examples/jsm/Addons.js'
+import { GLTFLoader, plane, RGBELoader } from 'three/examples/jsm/Addons.js'
 // 导入gltf加载器
 import { DRACOLoader } from 'three/examples/jsm/Addons.js'
 // 创建场景
@@ -64,6 +64,8 @@ rgbeLoader.load('/img/Environment.png', texture => {
     texture.mapping = THREE.EquirectangularReflectionMapping
     // 设置环境贴图
     scene.background = texture
+    // 设置环境贴图
+    scene.environment = texture
 })
 
 const shapebox1 = new THREE.Mesh(
@@ -114,10 +116,13 @@ uvGeometry.computeVertexNormals()
 
 const shapebox2 = new THREE.Mesh(
     uvGeometry,
-    new THREE.MeshBasicMaterial({
-        // color: 0xff00ff,
-        side: THREE.DoubleSide,
-        map: texture
+    // PBR 材质，会读法向量，也会读 scene.environment(第 68 行那个环境贴图)
+    // roughness 越小越光滑、metalness 越大越像金属 —— 光滑金属能照出环境
+    new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 0.1,
+        metalness: 0.9,
+        side: THREE.DoubleSide
     })
 )
 shapebox2.position.x = -2
