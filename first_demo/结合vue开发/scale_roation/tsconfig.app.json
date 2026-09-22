@@ -11,5 +11,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+  /* 课程练习草稿，未被任何文件引用，不参与构建与类型检查 */
+  "exclude": ["src/views"]
 }

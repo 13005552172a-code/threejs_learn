@@ -1,81 +1,195 @@
-<template></template>
+<template>
+  <!-- 画布挂到这个容器里，而不是直接挂 document.body，卸载时 Vue 才能连根拔掉 -->
+  <div ref="containerRef" class="canvas-container"></div>
+</template>
+
 <script setup lang="ts">
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-// 导入lil.gui(Three.js 生态最常用的**轻量可视化控制面板库**)
+// lil.gui：Three.js 生态最常用的轻量可视化控制面板库
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js'
-// 导入hdr加载器
-import { GLTFLoader, RGBELoader } from 'three/examples/jsm/Addons.js'
-// 导入gltf加载器
-import { DRACOLoader } from 'three/examples/jsm/Addons.js'
-// 导入tween（three 0.185 内置的是 tween.js v21，只有命名导出，没有 TWEEN 这个导出）
-import * as TWEEN from 'three/examples/jsm/libs/tween.module.js'
-const { Tween } = TWEEN
-// 创建场景
-const scene = new THREE.Scene()
-// 创建相机
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-// 创建渲染器
-const renderer = new THREE.WebGLRenderer()
-renderer.setSize(window.innerWidth, window.innerHeight)
-// 追加
-document.body.appendChild(renderer.domElement)
-// 设置坐标辅助系
-const axesHelper = new THREE.AxesHelper(5)
-scene.add(axesHelper)
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-// 设置相机位置
-camera.position.x = 7
-camera.position.y = 5
-camera.position.z = 10
-camera.lookAt(0, 0, 0)
-// 设置轨道控制器(鼠标可以拖动)
-const controls = new OrbitControls(camera, renderer.domElement)
-controls.enableDamping = true // 设置阻尼，让控制器更有真实效果,必须在动画循环里调用.update()
+// ============================================================
+// 1. 模块级引用
+//    凡是跨函数用到的（动画循环 / 尺寸变化 / 卸载清理）都提到这一层，
+//    只在 init 内部用一次的临时对象则留在 init 里，别往上堆
+// ============================================================
+const containerRef = ref<HTMLDivElement>()
 
-// 监听窗口的变化
-window.addEventListener('resize', () => {
-    // 重置渲染器大小
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    // 重置相机宽高比
-    camera.aspect = window.innerWidth / window.innerHeight
-    // 更新相机投影矩阵
-    camera.updateProjectionMatrix()
+let scene: THREE.Scene
+let camera: THREE.PerspectiveCamera
+let renderer: THREE.WebGLRenderer
+let controls: OrbitControls
+let gui: GUI
+let rafId = 0
+
+// 需要手动释放的 GPU 资源，统一收在一处，卸载时遍历 dispose
+const disposables: { dispose: () => void }[] = []
+
+// ============================================================
+// 2. 初始化
+// ============================================================
+function init() {
+  const container = containerRef.value!
+
+  // -------- 2.1 场景 / 相机 / 渲染器 --------
+  scene = new THREE.Scene()
+
+  const { clientWidth: width, clientHeight: height } = container
+  camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000)
+  camera.position.set(2, 2, 5)
+
+  renderer = new THREE.WebGLRenderer()
+  renderer.setSize(width, height)
+  container.appendChild(renderer.domElement)
+
+  // 坐标辅助系
+  scene.add(new THREE.AxesHelper(5))
+
+  // -------- 2.2 资源：贴图 --------
+  const texture = new THREE.TextureLoader().load('/img/environment_tie.png')
+  // r152+ 必须手动声明这是 sRGB 颜色贴图，否则被当成线性数据，画面发白
+  texture.colorSpace = THREE.SRGBColorSpace
+  disposables.push(texture)
+
+  // -------- 2.3 材质 --------
+  const builtinMat = new THREE.MeshBasicMaterial({ map: texture })
+  // 手搓平面这个留个 wireframe 开关，方便看清三角形的划分
+  const customMat = new THREE.MeshBasicMaterial({ map: texture, wireframe: false })
+  disposables.push(builtinMat, customMat)
+
+  // -------- 2.4 几何体 --------
+  const builtinGeo = new THREE.PlaneGeometry(2, 2)
+  const customGeo = createCustomPlaneGeo()
+  disposables.push(builtinGeo, customGeo)
+
+  // -------- 2.5 Mesh 并加入场景 --------
+  // 两个平面并排做对照：左边手搓、右边内置，贴图效果应当完全一致
+  const builtinMesh = new THREE.Mesh(builtinGeo, builtinMat)
+  builtinMesh.position.x = 2
+  scene.add(builtinMesh)
+
+  const customMesh = new THREE.Mesh(customGeo, customMat)
+  customMesh.position.x = -2
+  scene.add(customMesh)
+
+  // -------- 2.6 控制器 --------
+  controls = new OrbitControls(camera, renderer.domElement)
+  controls.enableDamping = true // 阻尼，必须在动画循环里调用 update() 才生效
+
+  // -------- 2.7 GUI --------
+  gui = createGui(customMat)
+
+  // -------- 2.8 事件 --------
+  window.addEventListener('resize', handleResize)
+}
+
+// ============================================================
+// 3. 手搓几何体：4 个顶点 + 索引拼出正方形
+// ============================================================
+function createCustomPlaneGeo() {
+  const geo = new THREE.BufferGeometry()
+
+  // 正方形只有 4 个角，就写 4 个顶点，靠索引复用
+  // 顺序：0 左下 / 1 右下 / 2 右上 / 3 左上
+  const positions = new Float32Array([
+    -1.0, -1.0, 0.0, // 0 左下
+    1.0, -1.0, 0.0,  // 1 右下
+    1.0, 1.0, 0.0,   // 2 右上
+    -1.0, 1.0, 0.0   // 3 左上
+  ])
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+
+  // 索引：用这 4 个顶点拼出 2 个三角形，都取逆时针，从 +Z 看才是正面
+  // 三角形1 0→1→2：左下,右下,右上
+  // 三角形2 2→3→0：右上,左上,左下
+  const indices = new Uint16Array([0, 1, 2, 2, 3, 0])
+  geo.setIndex(new THREE.BufferAttribute(indices, 1))
+
+  // uv：与上面 4 个顶点一一对应（uv 原点在贴图左下角）
+  // 材质里必须有 map，这里写的 uv 才会被真正采样，否则是死数据
+  const uv = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1])
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+
+  return geo
+}
+
+// ============================================================
+// 4. GUI 面板
+// ============================================================
+function createGui(customMat: THREE.MeshBasicMaterial) {
+  const panel = new GUI()
+
+  const fullscreenActions = {
+    enter: () => containerRef.value?.requestFullscreen(),
+    exit: () => document.exitFullscreen()
+  }
+  panel.add(fullscreenActions, 'enter').name('全屏窗口')
+  panel.add(fullscreenActions, 'exit').name('退出全屏窗口')
+
+  // 线框模式：作用在手搓的那个平面上，用来确认三角形是怎么拼的
+  panel.add(customMat, 'wireframe').name('线框模式')
+
+  // 取色是乘到贴图上的，所以是「染色」而不是「替换颜色」
+  // 默认白色 = 不做任何改变，两个平面看起来才一致
+  const colorParams = { planeColor: '#ffffff' }
+  panel.addColor(colorParams, 'planeColor')
+    .name('平面颜色')
+    .onChange(value => customMat.color.set(value))
+
+  return panel
+}
+
+// ============================================================
+// 5. 动画循环
+// ============================================================
+function animate() {
+  rafId = requestAnimationFrame(animate)
+  controls.update()
+  renderer.render(scene, camera)
+}
+
+// ============================================================
+// 6. 尺寸变化
+// ============================================================
+function handleResize() {
+  const container = containerRef.value
+  if (!container) return
+
+  const { clientWidth: width, clientHeight: height } = container
+  renderer.setSize(width, height)
+  camera.aspect = width / height
+  camera.updateProjectionMatrix()
+}
+
+// ============================================================
+// 7. 生命周期
+// ============================================================
+onMounted(() => {
+  init()
+  animate()
 })
 
-let eventObj = {
-    Fullscreen: function () {
-        document.body.requestFullscreen()
-        console.log('全屏窗口')
-    },
-    ExitFullscreen: function () {
-        document.exitFullscreen()
-        console.log('退出全屏窗口')
-    }
-}
-let params = {}
-const gui = new GUI()
+onBeforeUnmount(() => {
+  // 先停循环再拆资源：顺序反了可能在已释放的对象上继续渲染
+  cancelAnimationFrame(rafId)
 
-const shapebox1 = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 16, 16),
-    new THREE.MeshBasicMaterial({
-        color: 0xff00ff
-    })
-)
-scene.add(shapebox1)
-const tween = new Tween(shapebox1.position)
-tween.to({ x: 4 }, 1000).repeat(3)
-// 移动补间动画
-tween.start()
+  window.removeEventListener('resize', handleResize)
+  controls.dispose()
+  gui.destroy()
+  disposables.forEach(item => item.dispose())
+  disposables.length = 0
 
-// 渲染函数，一帧一帧
-function animate() {
-    requestAnimationFrame(animate)
-    // cube.rotation.x += 0.01
-    // cube.rotation.y += 0.01
-    controls.update() // 更新旋转
-    renderer.render(scene, camera)
-    tween.update()
-}
-animate()
+  renderer.dispose()
+  renderer.domElement.remove()
+})
 </script>
+
+<style scoped>
+.canvas-container {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+</style>

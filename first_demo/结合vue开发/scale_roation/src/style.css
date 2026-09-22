@@ -2,11 +2,7 @@
     margin: 0;
     padding: 0;
 }
+/* 尺寸交给容器，renderer.setSize() 会给 canvas 写入具体的像素宽高 */
 canvas {
     display: block;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
 }
